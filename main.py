@@ -14,7 +14,9 @@ import agent_description as descr
 ##################################################       AGENTS       ##################################################
 ########################################################################################################################
 
-config_list = ({"model": "gpt-4-1106-preview", "api_key": os.environ["OPENAI_API_KEY"]},)
+config_list = (
+    {"model": "gpt-4-1106-preview", "api_key": os.environ["OPENAI_API_KEY"]},
+)
 
 # Agents
 human = autogen.UserProxyAgent(
@@ -33,10 +35,10 @@ data_expert = autogen.AssistantAgent(
     description="A primary assistant agent that writes plans and code to solve tasks.",
     system_message=descr.DATA_EXPERT_DESCRIPTION
     + descr.KPI_EXPERT_AGENT
-    + descr.REPORT_EXPERT_AGENT
-    + descr.TRANSITION_TABLE_EXPERT_AGENT,
+    + descr.REPORT_EXPERT_AGENT,
+    # + descr.TRANSITION_TABLE_EXPERT_AGENT,
     llm_config={
-        "cache_seed": 41,  # seed for caching and reproducibility
+        "cache_seed": 30,  # seed for caching and reproducibility
         "config_list": config_list,
         "temperature": 0,
     },
@@ -47,10 +49,10 @@ developer = autogen.AssistantAgent(
     description="A primary assistant agent that writes plans and code to solve tasks.",
     system_message=descr.DEFAULT_AGENT_DESCRIPTION
     + descr.BIGQUERY_AGENT_DESCRIPTION
-    + descr.DATASTORE_AGENT_DESCRIPTION
+    + descr.DEVELOPER_AGENT_DESCRIPTION
     + descr.KPI_EXPERT_AGENT,
     llm_config={
-        "cache_seed": 41,  # seed for caching and reproducibility
+        "cache_seed": 30,  # seed for caching and reproducibility
         "config_list": config_list,
         "temperature": 0,
     },
@@ -86,7 +88,7 @@ def run_bq_query(query: str) -> Iterable[dict]:
     -------
     Iterable[dict]
     """
-    GCP_PROJECT = "noted-victory-133614"
+    GCP_PROJECT = "exposition-layer"
     client = bigquery_v3.create_client(project_id=GCP_PROJECT)
     rows = client.query(query)
     return list(rows)
@@ -94,7 +96,9 @@ def run_bq_query(query: str) -> Iterable[dict]:
 
 # @user_proxy.register_for_execution()
 # @assistant.register_for_llm(name="run_datastore_query", description="Use this function to run query on GCP Datastore")
-def run_datastore_query(namespace: str, kind: str, filters: list, limit: Optional[int] = None) -> Iterable[dict]:
+def run_datastore_query(
+    namespace: str, kind: str, filters: list, limit: Optional[int] = None
+) -> Iterable[dict]:
     """Run a query on GCP Datastore
 
     Parameters
@@ -111,7 +115,7 @@ def run_datastore_query(namespace: str, kind: str, filters: list, limit: Optiona
     -------
     Iterable[dict]
     """
-    GCP_PROJECT = "noted-victory-133614"
+    GCP_PROJECT = "exposition-layer"
 
     # Query
     client = datastore.get_or_create_client(GCP_PROJECT, namespace)
@@ -147,7 +151,8 @@ def save_file(file_name: str, content: str):
 
 
 # The assistant receives a message from the user_proxy, which contains the task description
-message = "I'd like to know CPM for the biggest 5 campaigns of my client ?"  # You can run query on dbm_math.p3_ratios"
+# message = "I'd like to have a plot of the comparison of the kpi of an AB Test campaign over the last 14 days"  # You can run query on dbm_math.p3_ratios"
+message = "I have an AB Test Campaign running, I would like to have mulitple plots to evaluate if we are winning the AB test, create a plot of the KPI value over time to compare A and B"
 # message = "Can you plot the evolution of the CPM of Diageo campaigns on the last 4 days ? (only the 5 campaigns that are spending the most)"
 # message = """
 #     Please write a Python script that uses a parser to get a group object field
@@ -164,18 +169,18 @@ message = "I'd like to know CPM for the biggest 5 campaigns of my client ?"  # Y
 human_request_chat = human.initiate_chat(
     data_expert,
     message=message,
-    summary_method="reflection_with_llm",
+    summary_method="last_msg",
     summary_prompt="Summarize the user request and indicate in which tables we should check. Do not add any introductory phrases. If the intended request is NOT doable, please point it out.",
     clear_history=True,
 )
 
-developer_chat = user_proxy.initiate_chat(
-    developer,
-    message=human_request_chat.summary,
-    summary_method="reflection_with_llm",
-    summary_prompt="Summarize takeaway from the conversation. Do not add any introductory phrases. If the intended request is NOT properly addressed, please point it out.",
-    clear_history=True,
-)
+# developer_chat = user_proxy.initiate_chat(
+#     developer,
+#     message=human_request_chat.summary,
+#     summary_method="reflection_with_llm",
+#     summary_prompt="Summarize takeaway from the conversation. Do not add any introductory phrases. If the intended request is NOT properly addressed, please point it out.",
+#     clear_history=True,
+# )
 
 
 # import pdb

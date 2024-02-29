@@ -32,7 +32,7 @@ DATA_EXPERT_DESCRIPTION = """
     Your answers shouldn't include any python / sql / ...
 
     When discussing with another agent you have 2 different missions : 
-    1. Based on what you know, make sure its request is doable considering the data available and the tools at your disposal. Don't use code, only knowledge.
+    1. Based on what you know, make a summary on exactly what data we need, which table to query and what are the variables needed. Don't use code, only knowledge.
     2. Ask for more information if needed (dsp, client, campaign, date, etc.) and provide the best solution to the problem.
     
     You can assume any questions about access and rights are already resolved and focus only on missing business information.
@@ -44,7 +44,7 @@ DATA_EXPERT_DESCRIPTION = """
 
 BIGQUERY_AGENT_DESCRIPTION = """
     As an AI assistant, you are also able to run query on GCP Bigquery using Python.
-    All queries should be run on the project noted-victory-133614.
+    All queries should be run on the project exposition-layer.
     Read-only access to the BigQuery tables is available.
     Access have already been granted.
 
@@ -58,7 +58,7 @@ BIGQUERY_AGENT_DESCRIPTION = """
 
 DATASTORE_AGENT_DESCRIPTION = """
     As an AI assistant, you are also able to run query on GCP Datastore using Python.
-    All queries should be run on the project noted-victory-133614.
+    All queries should be run on the project exposition-layer.
     Read-only access to the BigQuery tables is available.
     Access have already been granted.
 
@@ -78,19 +78,23 @@ KPI_EXPERT_AGENT = """
     Here are some knowledge about KPIs : 
     CPM = 1000 * cost / impressions
     VCPM = 1000 * cost / viewable_impressions
+    CPVideoView = trueview_views / media_cost_usd
 """
 
 REPORT_EXPERT_AGENT = """
     Here is some documentation about a BigQuery table called report.
     It exists for several namespaces with different namings.
 
-    - diageo-sb.ttd.reports_cbcvsmp
-    - amnet-170518.dbm.report_263
+    - exposition-layer.global_objects.t_campaign_performance
+    partition_param: day_tz
+    description: Use this table to get the performance of advertisment campaigns, with variables like media cost spend and number of clicks, impressions etc
 
-    For now you don't need to use other clients.
+    - `exposition-layer.global_objects.t_insertion_orders`
+    description: Use this table to get information on campaigns ie group_object_field_id, baseline_type and KPI_to_optimize
 
-    This table are useful to understand the current performances of a campaign.
-    They are partitionned by day.
+    This table gives information on campaign ie group_object_field_id, 
+    when baseline_type='ab_test' it is an ab_test, 
+    the baseline group_object_field_id is the variable baseline_io
 """
 
 TRANSITION_TABLE_EXPERT_AGENT = """
@@ -107,4 +111,9 @@ TRANSITION_TABLE_EXPERT_AGENT = """
     - pof_id : str : The pof id - e.g. "1013153991"
     - gof_id : str : The group object field - e.g. "1013153991"
     - of_id : str : The object field - e.g. "1013153991"
+"""
+
+
+DEVELOPER_AGENT_DESCRIPTION = """ When you finished to draft the plan of action, 
+look at the message brief to know how to gather the data, I am not able to execute code but i can prepare scripts for Console to run
 """

@@ -24,6 +24,10 @@ DEFAULT_AGENT_DESCRIPTION = """
     Include verifiable evidence in your response if possible. Reply 'TERMINATE' in the end when everything is done.
 """
 
+CODE_SPEC_DESCRIPTION = """
+    Always write complete code. If you need to write a function, write the full function.
+"""
+
 BIGQUERY_AGENT_DESCRIPTION = """
     As an AI assistant, you are also able to run query on GCP Bigquery using Python.
     All queries should be run on the project noted-victory-133614.

@@ -6,7 +6,11 @@ from typing import Iterable, Optional
 from scibids_lib.gcp import datastore
 from scibids_lib.gcp.bigquery import bigquery_v3
 
-from agent_description import DEFAULT_AGENT_DESCRIPTION, BIGQUERY_AGENT_DESCRIPTION, DATASTORE_AGENT_DESCRIPTION
+from agent_description import (
+    DEFAULT_AGENT_DESCRIPTION,
+    BIGQUERY_AGENT_DESCRIPTION,
+    DATASTORE_AGENT_DESCRIPTION,
+)
 
 # Idea : alert to make sure 2 source of truth (reports & impressions) are aligned
 
@@ -14,13 +18,17 @@ from agent_description import DEFAULT_AGENT_DESCRIPTION, BIGQUERY_AGENT_DESCRIPT
 ##################################################       AGENTS       ##################################################
 ########################################################################################################################
 
-config_list = ({"model": "gpt-4-1106-preview", "api_key": os.environ["OPENAI_API_KEY"]},)
+config_list = (
+    {"model": "gpt-4-1106-preview", "api_key": os.environ["OPENAI_API_KEY"]},
+)
 
 # Agents
 assistant = autogen.AssistantAgent(
     name="Developer",
     description="A primary assistant agent that writes plans and code to solve tasks.",
-    system_message=DEFAULT_AGENT_DESCRIPTION + BIGQUERY_AGENT_DESCRIPTION + DATASTORE_AGENT_DESCRIPTION,
+    system_message=DEFAULT_AGENT_DESCRIPTION
+    + BIGQUERY_AGENT_DESCRIPTION
+    + DATASTORE_AGENT_DESCRIPTION,
     llm_config={
         "cache_seed": 41,  # seed for caching and reproducibility
         "config_list": config_list,
@@ -35,7 +43,7 @@ user_proxy = autogen.UserProxyAgent(
         "last_n_messages": 1,
         "use_docker": False,
     },
-    human_input_mode="NEVER",
+    human_input_mode="TERMINATE",
     llm_config=False,
 )
 
@@ -65,7 +73,9 @@ def run_bq_query(query: str) -> Iterable[dict]:
 
 # @user_proxy.register_for_execution()
 # @assistant.register_for_llm(name="run_datastore_query", description="Use this function to run query on GCP Datastore")
-def run_datastore_query(namespace: str, kind: str, filters: list, limit: Optional[int] = None) -> Iterable[dict]:
+def run_datastore_query(
+    namespace: str, kind: str, filters: list, limit: Optional[int] = None
+) -> Iterable[dict]:
     """Run a query on GCP Datastore
 
     Parameters
@@ -95,7 +105,9 @@ def run_datastore_query(namespace: str, kind: str, filters: list, limit: Optiona
 
 
 @user_proxy.register_for_execution()
-@assistant.register_for_llm(name="save_file", description="Use this function to save a file")
+@assistant.register_for_llm(
+    name="save_file", description="Use this function to save a file"
+)
 def save_file(file_name: str, content: str):
     """Save a file
 
@@ -118,7 +130,11 @@ def save_file(file_name: str, content: str):
 
 
 # The assistant receives a message from the user_proxy, which contains the task description
-message = "How many ratios is applied to group object field 1013153991 ? You can run query on dbm_math.p3_ratios"
+message = """
+    I would like to query another table: opti_all_YYYYMMDD (the YYYYMMDD is a date that can vary between 20240201 and 20240220) and can be found on ttd_math. I want to count across all possible dates the `avg_pconv` to plot a timeserie of its evolution. Can you plot it ?
+"""
+
+# "How many ratios is applied to group object field 1013153991 ? You can run query on dbm_math.p3_ratios"
 # message = """
 #     Please write a Python script that uses a parser to get a group object field
 #     and then run a query to get the number of ratios applied.
@@ -137,6 +153,6 @@ chat_res = user_proxy.initiate_chat(
     summary_method="reflection_with_llm",
     clear_history=True,
 )
-import pdb
+# import pdb
 
-pdb.set_trace()
+# pdb.set_trace()

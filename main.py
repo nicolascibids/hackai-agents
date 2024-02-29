@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 from scibids_lib.gcp import datastore
 from scibids_lib.gcp.bigquery import bigquery_v3
 
-from agent_description import DEFAULT_AGENT_DESCRIPTION, BIGQUERY_AGENT_DESCRIPTION, DATASTORE_AGENT_DESCRIPTION
+import agent_description as descr
 
 # Idea : alert to make sure 2 source of truth (reports & impressions) are aligned
 
@@ -17,10 +17,38 @@ from agent_description import DEFAULT_AGENT_DESCRIPTION, BIGQUERY_AGENT_DESCRIPT
 config_list = ({"model": "gpt-4-1106-preview", "api_key": os.environ["OPENAI_API_KEY"]},)
 
 # Agents
-assistant = autogen.AssistantAgent(
+human = autogen.UserProxyAgent(
+    name="Human",
+    description="A user proxy agent that executes code.",
+    code_execution_config={
+        "last_n_messages": 1,
+        "use_docker": False,
+    },
+    human_input_mode="ALWAYS",
+    llm_config=False,
+)
+
+data_expert = autogen.AssistantAgent(
+    name="Data Expert",
+    description="A primary assistant agent that writes plans and code to solve tasks.",
+    system_message=descr.DATA_EXPERT_DESCRIPTION
+    + descr.KPI_EXPERT_AGENT
+    + descr.REPORT_EXPERT_AGENT
+    + descr.TRANSITION_TABLE_EXPERT_AGENT,
+    llm_config={
+        "cache_seed": 41,  # seed for caching and reproducibility
+        "config_list": config_list,
+        "temperature": 0,
+    },
+)
+
+developer = autogen.AssistantAgent(
     name="Developer",
     description="A primary assistant agent that writes plans and code to solve tasks.",
-    system_message=DEFAULT_AGENT_DESCRIPTION + BIGQUERY_AGENT_DESCRIPTION + DATASTORE_AGENT_DESCRIPTION,
+    system_message=descr.DEFAULT_AGENT_DESCRIPTION
+    + descr.BIGQUERY_AGENT_DESCRIPTION
+    + descr.DATASTORE_AGENT_DESCRIPTION
+    + descr.KPI_EXPERT_AGENT,
     llm_config={
         "cache_seed": 41,  # seed for caching and reproducibility
         "config_list": config_list,
@@ -38,6 +66,7 @@ user_proxy = autogen.UserProxyAgent(
     human_input_mode="NEVER",
     llm_config=False,
 )
+
 
 ########################################################################################################################
 ##################################################       SKILLS       ##################################################
@@ -94,8 +123,8 @@ def run_datastore_query(namespace: str, kind: str, filters: list, limit: Optiona
     return list(query.fetch(limit=limit))
 
 
-@user_proxy.register_for_execution()
-@assistant.register_for_llm(name="save_file", description="Use this function to save a file")
+# @user_proxy.register_for_execution()
+# @assistant.register_for_llm(name="save_file", description="Use this function to save a file")
 def save_file(file_name: str, content: str):
     """Save a file
 
@@ -118,7 +147,8 @@ def save_file(file_name: str, content: str):
 
 
 # The assistant receives a message from the user_proxy, which contains the task description
-message = "How many ratios is applied to group object field 1013153991 ? You can run query on dbm_math.p3_ratios"
+message = "I'd like to know CPM for the biggest 5 campaigns of my client ?"  # You can run query on dbm_math.p3_ratios"
+# message = "Can you plot the evolution of the CPM of Diageo campaigns on the last 4 days ? (only the 5 campaigns that are spending the most)"
 # message = """
 #     Please write a Python script that uses a parser to get a group object field
 #     and then run a query to get the number of ratios applied.
@@ -131,12 +161,23 @@ message = "How many ratios is applied to group object field 1013153991 ? You can
 #     "Can you tell me how many unique group object field I have for today on datastore : thetradedesk.transition_table ?"
 # )
 
-chat_res = user_proxy.initiate_chat(
-    assistant,
+human_request_chat = human.initiate_chat(
+    data_expert,
     message=message,
     summary_method="reflection_with_llm",
+    summary_prompt="Summarize the user request and indicate in which tables we should check. Do not add any introductory phrases. If the intended request is NOT doable, please point it out.",
     clear_history=True,
 )
-import pdb
 
-pdb.set_trace()
+developer_chat = user_proxy.initiate_chat(
+    developer,
+    message=human_request_chat.summary,
+    summary_method="reflection_with_llm",
+    summary_prompt="Summarize takeaway from the conversation. Do not add any introductory phrases. If the intended request is NOT properly addressed, please point it out.",
+    clear_history=True,
+)
+
+
+# import pdb
+
+# pdb.set_trace()

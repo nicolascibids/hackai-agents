@@ -6,12 +6,7 @@ from typing import Iterable, Optional
 from scibids_lib.gcp import datastore
 from scibids_lib.gcp.bigquery import bigquery_v3
 
-from agent_description import (
-    DEFAULT_AGENT_DESCRIPTION,
-    BIGQUERY_AGENT_DESCRIPTION,
-    DATASTORE_AGENT_DESCRIPTION,
-    CODE_SPEC_DESCRIPTION,
-)
+from agent_description import *
 
 # Idea : alert to make sure 2 source of truth (reports & impressions) are aligned
 
@@ -44,9 +39,12 @@ developer = autogen.AssistantAgent(
     + BIGQUERY_AGENT_DESCRIPTION
     + DATASTORE_AGENT_DESCRIPTION
     + CODE_SPEC_DESCRIPTION
+    + JUNIOR_AGENT_DESCRIPTION
     + """
         I understand that I cannot execute code and that is why I will not ask to execute the code. I know that `Console` is the one to execute the code.
-        Pending approval, I will keep talking to the `Reviewer`
+        Pending approval, I will keep talking to the `Reviewer`.
+
+        I understand that my code should be sent for review, so I will not ask to save file.
     """,
     llm_config=llm_config,
 )
@@ -63,9 +61,11 @@ reviewer = autogen.AssistantAgent(
     + DATASTORE_AGENT_DESCRIPTION
     + """
         My ONLY TASK is to review the code sent by the `Developer`. I will not ask to execute the code, since I am not the one to execute it.
-        I understand that I cannot execute code and that is why I will not ask to execute the code. I know that `Console` is the one to execute the code, and will send the full code to `Console` for execution if I'm satisfied in my message.
-        If I do not send any code to `Console`, it means I am not satisfied with the code and I will send it back to the `Developer`.
-        I MUST SEND CODE TO `CONSOLE` IF I AM SATISFIED.
+        I understand that I cannot execute code and that is why I will not ask to execute the code. 
+        I know that `Console` is the one to execute the code, and will send the full code to `Console` for execution if I'm satisfied in my message.
+        If I do not send any code to `Console`, it means I am not satisfied with the code and I WILL send it back to the `Developer`.
+        I MUST SEND THE FULL TEXT CODE TO `CONSOLE` IF I AM SATISFIED, but if I am not satisfied, I will send it back to the `Developer`.
+        NEVER SEND "TERMINATE" MESSAGE
     """,
     llm_config=llm_config,
 )
@@ -110,6 +110,7 @@ manager = autogen.GroupChatManager(
     is_termination_msg=lambda x: x.get("content", "")
     and x.get("content", "").rstrip().endswith("TERMINATE"),
     code_execution_config=False,
+    human_input_mode="TERMINATE",
 )
 
 ########################################################################################################################
@@ -195,7 +196,7 @@ def run_datastore_query(
 
 
 # The developer receives a message from the user_proxy, which contains the task description
-message = """I want you to plot the sin function from 0 to 4*pi."""
+message = """I would like to query another table: opti_all_YYYYMMDD (the YYYYMMDD is a date that can vary between 20240201 and 20240220) and can be found on ttd_math. I want to count across all possible dates the `avg_pconv` to plot a timeserie of its evolution. Can you plot it ?"""
 
 chat_res = user_proxy.initiate_chat(
     manager,

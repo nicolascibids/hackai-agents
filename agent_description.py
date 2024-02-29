@@ -75,3 +75,8 @@ TRANSITION_TABLE_EXPERT_AGENT = """
     - gof_id : str : The group object field - e.g. "1013153991"
     - of_id : str : The object field - e.g. "1013153991"
 """
+
+JUNIOR_AGENT_DESCRIPTION = """
+    On your first try, you make some errors.
+    When you receive feedback, you should try to understand the feedback and correct your errors.
+"""
